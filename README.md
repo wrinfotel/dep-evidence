@@ -26,14 +26,24 @@ open-source-зависимостям из готового CycloneDX SBOM.
 ## Быстрый старт
 
 ```bash
-cd /root/dep-evidence
-export PYTHONPATH=src
+git clone https://github.com/wrinfotel/dep-evidence.git
+cd dep-evidence
+pip install .
 ```
+
+После установки доступна команда `dep-evidence`:
+
+```bash
+dep-evidence --help
+```
+
+Запуск без установки тоже работает — достаточно добавить `src` в `PYTHONPATH`
+и использовать `python3 -m dep_evidence`.
 
 ### 1. Синхронизация данных (единственная сетевая команда)
 
 ```bash
-python3 -m dep_evidence sync --cache ./cache \
+dep-evidence sync --cache ./cache \
     --osv-url  https://osv-vulnerabilities.storage.googleapis.com/Maven/all.zip \
     --kev-url  https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json
 ```
@@ -50,7 +60,7 @@ installed ./cache/snapshots/snapshot-4f1fdf88b24c46cbb41ab1059f845083
 ### 2. Сбор бандла (offline)
 
 ```bash
-python3 -m dep_evidence analyze \
+dep-evidence analyze \
     --sbom sbom.json \
     --cache ./cache \
     --exceptions exceptions.json \
@@ -71,7 +81,7 @@ mvn org.cyclonedx:cyclonedx-maven-plugin:makeAggregateBom
 ### 3. Diff между запусками (offline)
 
 ```bash
-python3 -m dep_evidence diff --before ./bundle-previous --after ./bundle
+dep-evidence diff --before ./bundle-previous --after ./bundle
 ```
 
 ```text
@@ -152,7 +162,7 @@ provenance**: причина и срок всегда в бандле.
 в CI:
 
 ```bash
-python3 -m dep_evidence analyze --sbom sbom.json --cache ./cache --out ./bundle
+dep-evidence analyze --sbom sbom.json --cache ./cache --out ./bundle
 grep -o '"fingerprint": "[0-9a-f]*"' bundle/evidence.json
 ```
 
@@ -173,6 +183,8 @@ OK
 ## Структура
 
 ```text
+build.py          минимальный PEP 517 backend, чтобы pip install . работал
+pyproject.toml    метаданные пакета и точка входа dep-evidence
 src/dep_evidence/
   cli.py          три команды, обработка ошибок без traceback
   sync.py         скачивание, валидация, атомарная установка снапшота
@@ -206,4 +218,5 @@ src/dep_evidence/
 
 ## Статус
 
-MVP, покрыт тестами и end-to-end прогоном. Git-репозиторий **не инициализирован**.
+MVP: покрыт 196 тестами и end-to-end прогоном на реальном HTTP. Публикуется
+как есть, без гарантий стабильности API.
