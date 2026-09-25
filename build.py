@@ -54,9 +54,11 @@ def _metadata() -> str:
         f"Name: {DISTRIBUTION}",
         f"Version: {VERSION}",
         "Summary: Local, reproducible dependency-evidence bundles from CycloneDX SBOMs.",
+        "License-Expression: Apache-2.0",
         "Requires-Python: >=3.11",
         "Classifier: Programming Language :: Python :: 3.11",
         "Classifier: Environment :: Console",
+        "Classifier: License :: OSI Approved :: Apache Software License",
     ]
     if description:
         lines.append("Description-Content-Type: text/markdown")
@@ -156,13 +158,13 @@ def build_sdist(sdist_directory, config_settings=None):
     filename = f"{base}.tar.gz"
     target = os.path.join(sdist_directory, filename)
     with tarfile.open(target, "w:gz") as archive:
-        for relative in ("README.md", "pyproject.toml", "build.py"):
+        for relative in ("README.md", "LICENSE", "pyproject.toml", "build.py"):
             absolute = os.path.join(HERE, relative)
             if os.path.exists(absolute):
                 archive.add(absolute, arcname=f"{base}/{relative}")
         for absolute, archive_path in _package_files():
             archive.add(absolute, arcname=f"{base}/src/{archive_path}")
-        for dirpath, _dirnames, filenames in os.walk(os.path.join(HERE, "tests")):
+        for dirpath, dirnames, filenames in os.walk(os.path.join(HERE, "tests")):
             dirnames[:] = [d for d in dirnames if d != "__pycache__"]
             for name in sorted(filenames):
                 if name.endswith(".py"):

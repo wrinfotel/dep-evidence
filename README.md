@@ -32,6 +32,22 @@ cd dep-evidence
 pip install .
 ```
 
+Try it right away on the bundled example (no SBOM of your own needed):
+
+```bash
+dep-evidence sync --cache ./cache \
+    --osv-url  https://osv-vulnerabilities.storage.googleapis.com/Maven/all.zip \
+    --kev-url  https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json
+
+dep-evidence analyze --cache ./cache \
+    --sbom examples/log4j-demo/sbom.json --out ./bundle
+```
+
+The example SBOM contains `log4j-core 2.14.1` — the Log4Shell version — so the
+report will show CVE-2021-44228 flagged as `known_exploited` in the CISA KEV
+catalog, plus an honest `review` for the `32.1.2-jre` version suffix of
+Guava. See `examples/log4j-demo/README.md` for details.
+
 The `dep-evidence` command is available after install:
 
 ```bash
@@ -222,3 +238,7 @@ OSV, CISA KEV, and the other sources separately.
 
 MVP: covered by 196 tests and an end-to-end run against real HTTP. Published as
 is, with no API stability guarantees.
+
+## License
+
+Apache License 2.0. See [LICENSE](LICENSE).

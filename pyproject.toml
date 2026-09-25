@@ -9,9 +9,12 @@ version = "0.1.0"
 description = "Local, reproducible dependency-evidence bundles from CycloneDX SBOMs."
 readme = "README.md"
 requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 classifiers = [
     "Programming Language :: Python :: 3.11",
     "Environment :: Console",
+    "License :: OSI Approved :: Apache Software License",
 ]
 
 [project.scripts]
