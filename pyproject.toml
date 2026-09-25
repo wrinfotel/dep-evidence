@@ -1,0 +1,21 @@
+[build-system]
+requires = []
+build-backend = "build"
+backend-path = ["."]
+
+[project]
+name = "dep-evidence"
+version = "0.1.0"
+description = "Local, reproducible dependency-evidence bundles from CycloneDX SBOMs."
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3.11",
+    "Environment :: Console",
+]
+
+[project.scripts]
+dep-evidence = "dep_evidence.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/wrinfotel/dep-evidence"
