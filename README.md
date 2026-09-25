@@ -1,29 +1,30 @@
 # dep-evidence
 
-Локальный CLI, который собирает **воспроизводимый пакет доказательств** по
-open-source-зависимостям из готового CycloneDX SBOM.
+Build a **reproducible evidence bundle** for your open-source dependencies from a
+CycloneDX SBOM you already have.
 
-Не ещё один vulnerability scanner. Смысл в другом: собрать артефакт, который
-можно отдать в enterprise-клиенту или аудитору и который **не меняется** от
-запуска к запуску, пока не изменились входные данные.
+Not another vulnerability scanner. The point is different: produce an artifact
+you can hand to an enterprise customer or an auditor, and that **does not
+change** between runs unless the input data changed.
 
-Три свойства, ради которых это сделано:
+Three properties drive the design:
 
-1. **Offline по умолчанию.** Сеть нужна ровно один раз — чтобы забрать снапшот
-   публичных данных. Дальше `analyze` и `diff` работают только с локальным кэшем.
-2. **Детерминизм.** Один и тот же SBOM + один и тот же снапшот дают
-   **побайтово одинаковые** файлы. Внутри нет времени запуска, hostname и
-   прочих рантайм-меток.
-3. **Провенанс.** Каждый снапшот аутентифицирован по SHA-256, и в `sources.json`
-   видно, из какого URL и какого дайджеста собраны доказательства.
+1. **Offline by default.** The network is used exactly once, to fetch a snapshot
+   of public data. After that, `analyze` and `diff` work purely from the local
+   cache.
+2. **Determinism.** The same SBOM plus the same snapshot produce **byte-for-byte
+   identical** files. No run timestamp, hostname, or other runtime markers leak
+   into the output.
+3. **Provenance.** Every snapshot is authenticated by SHA-256, and `sources.json`
+   records which URL and which digests the evidence was built from.
 
-## Требования
+## Requirements
 
 - Python 3.11+
-- Никаких зависимостей. Только стандартная библиотека.
-- Java, Maven и сеть для `analyze`/`diff` **не нужны**.
+- No dependencies. Standard library only.
+- Java, Maven, and network access are **not** required for `analyze` or `diff`.
 
-## Быстрый старт
+## Quick start
 
 ```bash
 git clone https://github.com/wrinfotel/dep-evidence.git
@@ -31,16 +32,16 @@ cd dep-evidence
 pip install .
 ```
 
-После установки доступна команда `dep-evidence`:
+The `dep-evidence` command is available after install:
 
 ```bash
 dep-evidence --help
 ```
 
-Запуск без установки тоже работает — достаточно добавить `src` в `PYTHONPATH`
-и использовать `python3 -m dep_evidence`.
+Running from source works too — add `src` to `PYTHONPATH` and use
+`python3 -m dep_evidence`.
 
-### 1. Синхронизация данных (единственная сетевая команда)
+### 1. Sync public data (the only networked command)
 
 ```bash
 dep-evidence sync --cache ./cache \
@@ -52,12 +53,12 @@ dep-evidence sync --cache ./cache \
 installed ./cache/snapshots/snapshot-4f1fdf88b24c46cbb41ab1059f845083
 ```
 
-Скачивание ограничено: есть потолок по размеру скачанного и по размеру
-распакованного ZIP (защита от zip-бомб), лимит на ретраи, обработка
-`Retry-After`. Установка атомарная — если что-то пошло не так, предыдущий
-рабочий снапшот остаётся единственным активным.
+Downloads are bounded: there is a cap on the downloaded size and on the
+uncompressed ZIP size (zip-bomb protection), a retry limit, and `Retry-After`
+handling. Installation is atomic — if anything fails, the previous working
+snapshot remains the only active one.
 
-### 2. Сбор бандла (offline)
+### 2. Build a bundle (offline)
 
 ```bash
 dep-evidence analyze \
@@ -71,14 +72,14 @@ dep-evidence analyze \
 wrote 6 files to ./bundle
 ```
 
-SBOM нужен готовый — этот инструмент **не генерирует** SBOM. Подойдёт тот, что
-выдал `cyclonedx-maven-plugin`:
+You need an SBOM up front — this tool **does not generate** one. The output of
+`cyclonedx-maven-plugin` works:
 
 ```bash
 mvn org.cyclonedx:cyclonedx-maven-plugin:makeAggregateBom
 ```
 
-### 3. Diff между запусками (offline)
+### 3. Diff two runs (offline)
 
 ```bash
 dep-evidence diff --before ./bundle-previous --after ./bundle
@@ -88,34 +89,34 @@ dep-evidence diff --before ./bundle-previous --after ./bundle
 1 added, 1 removed, 2 new, 1 resolved
 ```
 
-С флагом `--json` выдаётся канонический JSON диффа.
+Use `--json` to emit the canonical diff JSON.
 
-## Что лежит в бандле
+## What is in the bundle
 
-| Файл | Содержимое |
+| File | Contents |
 |---|---|
-| `evidence.json` | Основной документ: компоненты, находки, summary, fingerprint, provenance |
-| `report.html` | Самодостаточный отчёт для человека, всё экранировано |
-| `components.csv` | **Инвентарь компонентов**, а не отчёт о находках |
-| `exceptions.json` | Применённые/известные исключения |
-| `sources.json` | Provenance: URL, SHA-256, число записей, версии policy/правил |
-| `run_manifest.json` | Метаданные запуска (версия тула, policy, fingerprint) |
+| `evidence.json` | Main document: components, findings, summary, fingerprint, provenance |
+| `report.html` | Self-contained report for humans, fully escaped |
+| `components.csv` | **Component inventory**, not a findings report |
+| `exceptions.json` | Applied and known exceptions |
+| `sources.json` | Provenance: URL, SHA-256, record counts, policy/rule versions |
+| `run_manifest.json` | Run metadata (tool version, policy, fingerprint) |
 
-### Про `components.csv`
+### About `components.csv`
 
-Это именно перечень того, что нашлось в SBOM, — чтобы приложить как
-приложение к отчёту. Находки лежат в `evidence.json` и `report.html`.
+This is the list of what was found in the SBOM, meant to be attached to a report
+as an appendix. Findings live in `evidence.json` and `report.html`.
 
-Если лицензия не декларирована, `license_state` будет `unknown` — это честнее,
-чем угадать. Источник известных лицензий при этом сохраняется.
+When a license is not declared, `license_state` is `unknown` — that is more
+honest than guessing, and the license list is still recorded.
 
-Ячейки, начинающиеся с `=`, `+`, `-`, `@`, нейтрализуются префиксом-апострофом,
-чтобы Excel не выполнил содержимое как формулу.
+Cells starting with `=`, `+`, `-`, or `@` are neutralized with a leading
+apostrophe, so Excel does not evaluate their contents as a formula.
 
-## Исключения
+## Exceptions
 
-Политика исключений — обычный JSON. Подавляет находку, но **не удаляет её из
-provenance**: причина и срок всегда в бандле.
+The exception policy is plain JSON. It suppresses a finding but **never removes
+it from provenance**: the reason and the expiry are always in the bundle.
 
 ```json
 {
@@ -132,41 +133,42 @@ provenance**: причина и срок всегда в бандле.
 }
 ```
 
-Правило действует, пока `expires_on` не прошёл. Истёкшие правила игнорируются
-молча — находка снова всплывает.
+A rule stays in force until `expires_on` passes. Expired rules are ignored
+silently — the finding surfaces again on its own.
 
-## Что означает KEV
+## What a KEV match actually means
 
-Это важно и часто понимают неправильно.
+This matters and is commonly misunderstood.
 
-`KEV:known_exploited` означает ровно одно: **этот CVE есть в списке CISA KEV**.
-Он не утверждает, что эксплуатировали именно этот Maven-компонент и именно в
-вашем приложении.
+`kev.status: known_exploited` means exactly one thing: **this CVE appears in the
+CISA KEV catalog**. It does *not* assert that this specific Maven artifact was
+exploited, or exploited in your application.
 
-Сопоставление идёт по точному совпадению CVE-алиаса (`reason: exact_cve_alias`),
-без эвристик и догадок. Если совпадения нет — будет
-`not_known_exploited`, а не «вроде похоже».
+Matching is by exact CVE alias (`reason: exact_cve_alias`), with no heuristics
+and no guessing. When there is no exact match, the result is
+`not_known_exploited` — not "looks similar".
 
-Аналогично: `affected` в OSV означает, что версия попадает в диапазон
-уязвимости по данным OSV. Это не утверждение об эксплуатации и не приговор.
+Similarly, `affected` in OSV means the version falls inside the vulnerability
+range according to OSV data. It is not a claim of exploitation and not a verdict.
 
-## Детерминизм: почему это можно проверять
+## Determinism: how to verify it
 
-`evidence.json`, `report.html`, `components.csv`, `sources.json` и
-`run_manifest.json` **побайтово совпадают** при повторном запуске на одном
-входе. Рантайм-метки живут отдельно и не влияют на эти пять файлов.
+`evidence.json`, `report.html`, `components.csv`, `sources.json`, and
+`run_manifest.json` are **byte-for-byte identical** across repeated runs on the
+same input. Runtime metadata is kept separate and does not affect these five
+files.
 
-`fingerprint` в `evidence.json` — это SHA-256 от нормализованного представления
-(SBOM-digest + provenance + версии policy/правил). Одинаковый вход даёт
-одинаковый fingerprint, разный — разный. Он годится как ключ для сравнения
-в CI:
+The `fingerprint` in `evidence.json` is a SHA-256 over a normalized
+representation (SBOM digest plus provenance plus policy/rule versions). Same
+input gives the same fingerprint; different input gives a different one. It
+works as a comparison key in CI:
 
 ```bash
 dep-evidence analyze --sbom sbom.json --cache ./cache --out ./bundle
 grep -o '"fingerprint": "[0-9a-f]*"' bundle/evidence.json
 ```
 
-## Тесты
+## Tests
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python3 -B -m unittest discover -s tests
@@ -177,46 +179,46 @@ Ran 196 tests in 28s
 OK
 ```
 
-Флаги `-B` и `PYTHONDONTWRITEBYTECODE=1` нужны, чтобы в проекте не оставалось
-`__pycache__`.
+The `-B` flag and `PYTHONDONTWRITEBYTECODE=1` keep `__pycache__` out of the
+working tree.
 
-## Структура
+## Structure
 
 ```text
-build.py          минимальный PEP 517 backend, чтобы pip install . работал
-pyproject.toml    метаданные пакета и точка входа dep-evidence
+build.py          minimal PEP 517 backend so that `pip install .` works
+pyproject.toml    package metadata and the `dep-evidence` entry point
 src/dep_evidence/
-  cli.py          три команды, обработка ошибок без traceback
-  sync.py         скачивание, валидация, атомарная установка снапшота
-  datasets.py     чтение снапшота по указателю, проверка SHA-256
-  sbom.py         парсер CycloneDX JSON
-  analysis.py     канонизация компонентов, provenance, fingerprint
-  osv.py          сопоставление версий с диапазонами OSV
-  kev.py          сопоставление CVE-алиасов с CISA KEV
-  versioning.py   сравнение версий
-  exceptions.py   политика исключений
-  reporting.py    JSON/HTML/CSV-рендереры
-  bundle.py       запись бандла
-  diffing.py      сравнение двух бандлов
+  cli.py          the three commands, error handling without traceback
+  sync.py         download, validation, atomic snapshot install
+  datasets.py     snapshot reads via the pointer, SHA-256 verification
+  sbom.py         CycloneDX JSON parser
+  analysis.py     component canonicalization, provenance, fingerprint
+  osv.py          version matching against OSV ranges
+  kev.py          CVE alias matching against CISA KEV
+  versioning.py   version comparison
+  exceptions.py   exception policy
+  reporting.py    JSON/HTML/CSV renderers
+  bundle.py       bundle writing
+  diffing.py      bundle comparison
   errors.py       DataError / InputError
 ```
 
-## Ограничения
+## Limitations
 
-Стоит понимать честно, что инструмент **не делает**:
+Be clear-eyed about what this tool **does not** do:
 
-- **Не генерирует SBOM.** Нужен готовый от `cyclonedx-maven-plugin`.
-- **Не обновляет зависимости.** Только собирает доказательства.
-- **Не даёт compliance и юридических гарантий.** Это не сертификат.
-- **Не является непрерывным мониторингом.** Данные не обновляются сами.
-- **Не проверяет лицензии на соответствие политике** — только собирает то, что
-  декларировано в SBOM.
-- **Не призывает CVE-префикс.** Точное совпадение или честный `review`.
+- **Does not generate an SBOM.** Bring your own from `cyclonedx-maven-plugin`.
+- **Does not update dependencies.** It only assembles evidence.
+- **Does not provide compliance or legal assurance.** It is not a certificate.
+- **Is not continuous monitoring.** Data does not refresh on its own.
+- **Does not check licenses against a policy** — it only records what the SBOM
+  declares.
+- **Does not guess CVE prefixes.** Exact match, or an honest `review`.
 
-Перед любым публичным использованием или redistribut'ом снапшотов отдельно
-проверьте условия OSV, CISA KEV и прочих источников.
+Before any public use or redistribution of the snapshots, check the terms of
+OSV, CISA KEV, and the other sources separately.
 
-## Статус
+## Status
 
-MVP: покрыт 196 тестами и end-to-end прогоном на реальном HTTP. Публикуется
-как есть, без гарантий стабильности API.
+MVP: covered by 196 tests and an end-to-end run against real HTTP. Published as
+is, with no API stability guarantees.
